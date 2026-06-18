@@ -1,0 +1,1777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Solana Key Converter — Private Key Format Tool</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ===== Reset ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ===== Noise Overlay ===== */
+@keyframes grainShift {
+  0%, 100% { transform: translate(0, 0); }
+  10% { transform: translate(-5%, -5%); }
+  20% { transform: translate(-10%, 5%); }
+  30% { transform: translate(5%, -10%); }
+  40% { transform: translate(-5%, 15%); }
+  50% { transform: translate(-10%, 5%); }
+  60% { transform: translate(15%, 0); }
+  70% { transform: translate(0, 10%); }
+  80% { transform: translate(-15%, 0); }
+  90% { transform: translate(10%, 5%); }
+}
+
+.noise-overlay {
+  position: fixed;
+  top: -50%; left: -50%;
+  width: 200%; height: 200%;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.035;
+  animation: grainShift 8s steps(10) infinite;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ===== CSS Variables ===== */
+:root {
+  --bg: #08080a;
+  --bg-elev: #0f0f12;
+  --bg-card: #121216;
+  --border: rgba(255,255,255,0.07);
+  --border-hover: rgba(255,255,255,0.14);
+  --text: #f0f0f2;
+  --text-muted: #6a6a72;
+  --text-dim: #44444c;
+  --accent: #2dd4bf;
+  --accent-glow: rgba(45, 212, 191, 0.15);
+  --accent2: #a78bfa;
+  --danger: #f87171;
+  --mono: 'JetBrains Mono', monospace;
+  --sans: 'Space Grotesk', sans-serif;
+}
+
+/* ===== Base ===== */
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection { background: var(--accent); color: #000; }
+
+/* ===== Scrollbar ===== */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border-hover); border-radius: 3px; }
+
+/* ===== Nav ===== */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  padding: 1.2rem 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(8, 8, 10, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  transition: padding 0.3s ease;
+}
+
+nav.scrolled { padding: 0.8rem 2.5rem; }
+
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+}
+
+.nav-logo-mark {
+  width: 28px; height: 28px;
+  border: 1.5px solid var(--accent);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.nav-logo-mark::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent 40%, var(--accent-glow));
+}
+
+.nav-logo-mark svg { position: relative; z-index: 1; }
+
+.nav-logo span { color: var(--text-muted); font-weight: 400; }
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  font-size: 0.88rem;
+}
+
+.nav-links a {
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.2s;
+  position: relative;
+}
+
+.nav-links a:hover { color: var(--text); }
+
+.nav-links a::after {
+  content: '';
+  position: absolute;
+  bottom: -4px; left: 0;
+  width: 0; height: 1px;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+
+.nav-links a:hover::after { width: 100%; }
+
+.nav-cta {
+  padding: 0.5rem 1.2rem;
+  border: 1px solid var(--border-hover);
+  border-radius: 100px;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 0.85rem;
+  transition: all 0.3s;
+  background: transparent;
+}
+
+.nav-cta:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 20px var(--accent-glow);
+}
+
+/* ===== Hero ===== */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 8rem 2rem 4rem;
+  text-align: center;
+  overflow: hidden;
+}
+
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.35;
+}
+
+.hero-bg img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  filter: contrast(1.1) brightness(0.5);
+}
+
+.hero-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 0%, var(--bg) 75%);
+}
+
+.hero-glow {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.hero-content { position: relative; z-index: 2; max-width: 720px; }
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-bottom: 2rem;
+  background: rgba(255,255,255,0.02);
+}
+
+.hero-badge .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.hero h1 {
+  font-size: clamp(2.5rem, 6vw, 4.5rem);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+  margin-bottom: 1.5rem;
+}
+
+.hero h1 .accent {
+  color: var(--accent);
+  font-style: italic;
+  font-weight: 300;
+}
+
+.hero h1 .strike {
+  position: relative;
+  display: inline-block;
+}
+
+.hero h1 .strike::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: -5%;
+  width: 110%; height: 2px;
+  background: var(--accent2);
+  transform: translateY(-50%);
+  opacity: 0.5;
+}
+
+.hero p {
+  font-size: 1.1rem;
+  color: var(--text-muted);
+  max-width: 480px;
+  margin: 0 auto 2.5rem;
+  line-height: 1.7;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn-primary {
+  padding: 0.85rem 2rem;
+  background: var(--accent);
+  color: #000;
+  border: none;
+  border-radius: 100px;
+  font-family: var(--sans);
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.3s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px var(--accent-glow);
+}
+
+.btn-secondary {
+  padding: 0.85rem 2rem;
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border-hover);
+  border-radius: 100px;
+  font-family: var(--sans);
+  font-size: 0.92rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.3s;
+}
+
+.btn-secondary:hover {
+  border-color: var(--text-muted);
+  background: rgba(255,255,255,0.03);
+}
+
+.hero-scroll {
+  position: absolute;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  color: var(--text-dim);
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(8px); }
+}
+
+/* ===== Section General ===== */
+section { padding: 6rem 2rem; position: relative; }
+
+.container { max-width: 1100px; margin: 0 auto; }
+
+.section-label {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--accent);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.section-label::before {
+  content: '';
+  width: 24px; height: 1px;
+  background: var(--accent);
+}
+
+.section-title {
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  margin-bottom: 1rem;
+}
+
+.section-subtitle {
+  color: var(--text-muted);
+  font-size: 1.05rem;
+  max-width: 560px;
+  margin-bottom: 3rem;
+}
+
+/* ===== Converter Tool ===== */
+.converter-section {
+  background: var(--bg-elev);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.converter-wrap {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  transition: border-color 0.3s;
+}
+
+.converter-wrap:hover { border-color: var(--border-hover); }
+
+.converter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.2rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.converter-tabs {
+  display: flex;
+  gap: 0.3rem;
+  background: rgba(255,255,255,0.03);
+  padding: 0.25rem;
+  border-radius: 100px;
+  border: 1px solid var(--border);
+}
+
+.converter-tab {
+  padding: 0.5rem 1.2rem;
+  border-radius: 100px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.25s;
+  border: none;
+  background: transparent;
+  font-family: var(--sans);
+}
+
+.converter-tab.active {
+  background: var(--text);
+  color: #000;
+}
+
+.converter-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.converter-status .status-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent);
+}
+
+.converter-body {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 0;
+  align-items: stretch;
+}
+
+.converter-field {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.field-label {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.field-label .char-count {
+  color: var(--text-dim);
+  font-size: 0.68rem;
+}
+
+textarea.key-input {
+  width: 100%;
+  min-height: 180px;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem;
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  color: var(--text);
+  resize: vertical;
+  line-height: 1.6;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  outline: none;
+}
+
+textarea.key-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+textarea.key-input::placeholder { color: var(--text-dim); }
+
+.converter-arrow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.5rem;
+  position: relative;
+}
+
+.converter-arrow .arrow-line {
+  width: 1px;
+  flex-grow: 1;
+  background: linear-gradient(to bottom, transparent, var(--border-hover), transparent);
+}
+
+.converter-arrow .arrow-btn {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--border-hover);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+  margin: 0.5rem 0;
+}
+
+.converter-arrow .arrow-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  transform: scale(1.08);
+  box-shadow: 0 0 20px var(--accent-glow);
+}
+
+.converter-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.converter-actions { display: flex; gap: 0.6rem; }
+
+.btn-action {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.btn-action:hover {
+  border-color: var(--border-hover);
+  color: var(--text);
+  background: rgba(255,255,255,0.02);
+}
+
+.btn-action.primary {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.btn-action.primary:hover {
+  background: var(--accent-glow);
+}
+
+.privacy-note {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--text-dim);
+}
+
+.converter-message {
+  padding: 0.75rem 1.5rem;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  border-top: 1px solid var(--border);
+  display: none;
+}
+
+.converter-message.show { display: block; }
+
+.converter-message.success { color: var(--accent); background: var(--accent-glow); }
+.converter-message.error { color: var(--danger); background: rgba(248,113,113,0.08); }
+
+/* ===== Wallet Info / Solscan ===== */
+.wallet-info {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid rgba(45, 212, 191, 0.25);
+  border-radius: 10px;
+  background: rgba(45, 212, 191, 0.03);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.wallet-info-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.wallet-info-label {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.wallet-info-label .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent2);
+  box-shadow: 0 0 6px var(--accent2);
+}
+
+.wallet-address {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  color: var(--accent);
+  word-break: break-all;
+}
+
+.solscan-btn {
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--accent);
+  padding: 0.5rem 1.1rem;
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.25s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.solscan-btn:hover {
+  background: var(--accent-glow);
+  box-shadow: 0 0 16px var(--accent-glow);
+  transform: translateY(-1px);
+}
+
+@media (max-width: 768px) {
+  .wallet-info { flex-direction: column; align-items: stretch; }
+  .solscan-btn { justify-content: center; }
+}
+
+/* ===== Features ===== */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.feature-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 2rem;
+  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+
+.feature-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.feature-card:hover {
+  border-color: var(--border-hover);
+  transform: translateY(-4px);
+}
+
+.feature-card:hover::before { opacity: 1; }
+
+.feature-icon {
+  width: 44px; height: 44px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.2rem;
+  color: var(--accent);
+  background: rgba(45,212,191,0.05);
+}
+
+.feature-card h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0.6rem;
+  letter-spacing: -0.01em;
+}
+
+.feature-card p {
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  line-height: 1.65;
+}
+
+/* ===== How It Works ===== */
+.how-section {
+  background: var(--bg-elev);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0;
+  position: relative;
+}
+
+.step {
+  padding: 2rem;
+  position: relative;
+  border-right: 1px solid var(--border);
+}
+
+.step:last-child { border-right: none; }
+
+.step-number {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--accent);
+  margin-bottom: 1rem;
+}
+
+.step h3 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin-bottom: 0.6rem;
+}
+
+.step p {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.65;
+}
+
+/* ===== Visual Section ===== */
+.visual-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  padding: 0;
+  min-height: 500px;
+}
+
+.visual-image {
+  position: relative;
+  overflow: hidden;
+}
+
+.visual-image img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  filter: contrast(1.05) brightness(0.7);
+  transition: transform 0.6s ease;
+}
+
+.visual-image:hover img { transform: scale(1.03); }
+
+.visual-image::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(8,8,10,0.4), transparent 50%, rgba(8,8,10,0.6));
+}
+
+.visual-content {
+  padding: 4rem 3rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.visual-content h2 {
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  margin-bottom: 1.2rem;
+  line-height: 1.2;
+}
+
+.visual-content p {
+  color: var(--text-muted);
+  font-size: 1rem;
+  line-height: 1.75;
+  margin-bottom: 1.5rem;
+}
+
+.visual-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.visual-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  font-size: 0.92rem;
+  color: var(--text-muted);
+}
+
+.visual-list li .check {
+  color: var(--accent);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.visual-list li strong { color: var(--text); font-weight: 500; }
+
+/* ===== FAQ ===== */
+.faq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.faq-item {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+  background: var(--bg-card);
+}
+
+.faq-item:hover { border-color: var(--border-hover); }
+
+.faq-question {
+  padding: 1.2rem 1.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.98rem;
+  font-weight: 500;
+  user-select: none;
+}
+
+.faq-toggle {
+  width: 24px; height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  transition: transform 0.3s;
+  flex-shrink: 0;
+}
+
+.faq-item.open .faq-toggle { transform: rotate(45deg); color: var(--accent); }
+
+.faq-answer {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.35s ease, padding 0.35s ease;
+  padding: 0 1.5rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.7;
+}
+
+.faq-item.open .faq-answer {
+  max-height: 300px;
+  padding: 0 1.5rem 1.2rem;
+}
+
+/* ===== Footer ===== */
+footer {
+  padding: 3rem 2rem 2rem;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.footer-content {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+.footer-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.footer-links {
+  display: flex;
+  gap: 1.5rem;
+  font-size: 0.85rem;
+}
+
+.footer-links a {
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.footer-links a:hover { color: var(--text); }
+
+.footer-bottom {
+  max-width: 1100px;
+  margin: 2rem auto 0;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+  nav { padding: 1rem 1.2rem; }
+  .nav-links { display: none; }
+  
+  .converter-body {
+    grid-template-columns: 1fr;
+  }
+  
+  .converter-arrow {
+    flex-direction: row;
+    padding: 0.5rem 0;
+  }
+  
+  .converter-arrow .arrow-line {
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--border-hover), transparent);
+  }
+  
+  .visual-section {
+    grid-template-columns: 1fr;
+  }
+  
+  .visual-image { min-height: 280px; }
+  .visual-content { padding: 3rem 1.5rem; }
+  
+  .step { border-right: none; border-bottom: 1px solid var(--border); }
+  .step:last-child { border-bottom: none; }
+  
+  section { padding: 4rem 1.2rem; }
+  .converter-footer { flex-direction: column; align-items: stretch; }
+  .converter-actions { justify-content: center; }
+}
+
+/* ===== Fade In Animation ===== */
+.fade-in {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+
+.fade-in.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+</style>
+</head>
+<body>
+
+<!-- Noise Overlay -->
+<div class="noise-overlay"></div>
+
+<!-- Nav -->
+<nav id="nav">
+  <div class="nav-logo">
+    <div class="nav-logo-mark">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="8" cy="15" r="4"/>
+        <path d="M10.85 12.15L19 4"/>
+        <path d="M18 5l2 2"/>
+        <path d="M15 8l2 2"/>
+      </svg>
+    </div>
+    Key<span>Convert</span>
+  </div>
+  <div class="nav-links">
+    <a href="#converter">Converter</a>
+    <a href="#features">Features</a>
+    <a href="#how">How It Works</a>
+    <a href="#faq">FAQ</a>
+  </div>
+  <a href="#converter" class="nav-cta">Launch Tool</a>
+</nav>
+
+<!-- Hero -->
+<header class="hero">
+  <div class="hero-bg">
+    <img src="https://mcp-tools-z-image-turbo.hf.space/--replicas/sjbqs/gradio_api/file=/tmp/gradio/579b256b1649045b03e4cbafbd7604e4ebdd48999dd0e27c0b21c9ba28090754/image.webp" alt="">
+  </div>
+  <div class="hero-glow"></div>
+  <div class="hero-content">
+    <div class="hero-badge">
+      <span class="dot"></span>
+      100% Client-Side · Zero Data Sent
+    </div>
+    <h1>
+      Convert your Solana keys<br>
+      <span class="strike">fearfully</span> <span class="accent">privately</span>
+    </h1>
+    <p>
+      Transform between JSON array and Base58 private key formats instantly.
+      Everything runs in your browser — your keys never touch a server.
+    </p>
+    <div class="hero-actions">
+      <a href="#converter" class="btn-primary">
+        Start Converting
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+      </a>
+      <a href="#how" class="btn-secondary">How It Works</a>
+    </div>
+  </div>
+  <div class="hero-scroll">Scroll</div>
+</header>
+
+<!-- Converter Tool -->
+<section class="converter-section" id="converter">
+  <div class="container">
+    <div class="section-label fade-in">The Tool</div>
+    <h2 class="section-title fade-in">Private Key Converter</h2>
+    <p class="section-subtitle fade-in">
+      Paste your key in either format. Conversion happens instantly and entirely in your browser.
+    </p>
+
+    <div class="converter-wrap fade-in">
+      <div class="converter-header">
+        <div class="converter-tabs">
+          <button class="converter-tab active" data-mode="auto">Auto-Detect</button>
+          <button class="converter-tab" data-mode="json">JSON → Base58</button>
+          <button class="converter-tab" data-mode="base58">Base58 → JSON</button>
+        </div>
+        <div class="converter-status">
+          <span class="status-dot"></span>
+          Client-side · No network calls
+        </div>
+      </div>
+
+      <div class="converter-body">
+        <div class="converter-field">
+          <div class="field-label">
+            <span>Input</span>
+            <span class="char-count" id="inputCount">0 chars</span>
+          </div>
+          <textarea class="key-input" id="inputKey" placeholder='Paste your key here...
+
+JSON format:  [174, 47, 154, 16, 202, ...]
+Base58 format: 5J7vXt2P3qM8k9...' rows="8"></textarea>
+        </div>
+
+        <div class="converter-arrow">
+          <div class="arrow-line"></div>
+          <button class="arrow-btn" id="convertBtn" title="Convert">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
+            </svg>
+          </button>
+          <div class="arrow-line"></div>
+        </div>
+
+        <div class="converter-field">
+          <div class="field-label">
+            <span>Output</span>
+            <span class="char-count" id="outputCount">0 chars</span>
+          </div>
+          <textarea class="key-input" id="outputKey" placeholder="Converted key will appear here..." rows="8" readonly></textarea>
+          <div class="wallet-info" id="walletInfo" style="display:none;">
+            <div class="wallet-info-row">
+              <span class="wallet-info-label"><span class="dot"></span> Derived Wallet Address</span>
+              <code class="wallet-address" id="walletAddress"></code>
+            </div>
+            <a href="#" id="solscanBtn" class="solscan-btn" target="_blank" rel="noopener noreferrer">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+              </svg>
+              View on Solscan
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div class="converter-message" id="convertMessage"></div>
+
+      <div class="converter-footer">
+        <div class="privacy-note">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          Your data never leaves this browser
+        </div>
+        <div class="converter-actions">
+          <button class="btn-action" id="copyBtn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+            </svg>
+            Copy Output
+          </button>
+          <button class="btn-action" id="clearBtn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+            </svg>
+            Clear
+          </button>
+          <button class="btn-action primary" id="swapBtn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M7 10 3 14l4 4"/><path d="M3 14h13"/><path d="m17 4 4 4-4 4"/><path d="M21 8H8"/>
+            </svg>
+            Swap
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Features -->
+<section id="features">
+  <div class="container">
+    <div class="section-label fade-in">Why KeyConvert</div>
+    <h2 class="section-title fade-in">Built for privacy.<br>Designed for speed.</h2>
+    <p class="section-subtitle fade-in">
+      Every detail is engineered to keep your keys safe while making conversion effortless.
+    </p>
+
+    <div class="features-grid">
+      <div class="feature-card fade-in">
+        <div class="feature-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+        </div>
+        <h3>Zero Network Calls</h3>
+        <p>All conversion logic runs entirely in your browser's JavaScript engine. No fetch, no WebSocket, no analytics — your keys literally cannot leave your device.</p>
+      </div>
+
+      <div class="feature-card fade-in">
+        <div class="feature-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/>
+          </svg>
+        </div>
+        <h3>Instant Conversion</h3>
+        <p>No loading spinners, no API latency. Base58 encode/decode executes in microseconds. Paste your key and get results before you can blink.</p>
+      </div>
+
+      <div class="feature-card fade-in">
+        <div class="feature-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+        </div>
+        <h3>Open Source Logic</h3>
+        <p>The conversion algorithm is fully visible in the page source. No black boxes, no hidden telemetry. Audit the code yourself — transparency is security.</p>
+      </div>
+
+      <div class="feature-card fade-in">
+        <div class="feature-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+          </svg>
+        </div>
+        <h3>Solscan Integration</h3>
+        <p>Automatically derives your wallet's public address from the 64-byte keypair and provides a one-click link to view it on Solscan's blockchain explorer.</p>
+      </div>
+
+      <div class="feature-card fade-in">
+        <div class="feature-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+          </svg>
+        </div>
+        <h3>Works Offline</h3>
+        <p>Once the page loads, it needs no internet connection. Disconnect your Wi-Fi and convert keys with complete confidence. Air-gapped by design.</p>
+      </div>
+
+      <div class="feature-card fade-in">
+        <div class="feature-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 9h6v6H9z"/>
+          </svg>
+        </div>
+        <h3>Wallet Compatible</h3>
+        <p>Output works with Phantom, Solflare, Backpack, and any Solana wallet that accepts Base58 or JSON keypairs. Migrate between wallets with ease.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Visual Section -->
+<section class="visual-section">
+  <div class="visual-image">
+    <img src="https://mcp-tools-z-image-turbo.hf.space/--replicas/sjbqs/gradio_api/file=/tmp/gradio/9d8b207df047e43f59e2551d7f4e7ad2555f2bba08e8ec6c71d226a908fc1ebb/image.webp" alt="Security shield abstract">
+  </div>
+  <div class="visual-content">
+    <div class="section-label">Privacy First</div>
+    <h2>Your keys,<br>your business.</h2>
+    <p>
+      We built this tool because key conversion shouldn't require trusting a third party.
+      Every cryptographic operation happens inside your browser's sandbox.
+    </p>
+    <ul class="visual-list">
+      <li>
+        <svg class="check" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        <span><strong>No server-side processing</strong> — there is no backend at all</span>
+      </li>
+      <li>
+        <svg class="check" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        <span><strong>No cookies, no localStorage</strong> — nothing is persisted</span>
+      </li>
+      <li>
+        <svg class="check" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        <span><strong>No analytics or tracking</strong> — we can't see what you do</span>
+      </li>
+      <li>
+        <svg class="check" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        <span><strong>Open source logic</strong> — verify the code in your dev tools</span>
+      </li>
+    </ul>
+  </div>
+</section>
+
+<!-- How It Works -->
+<section class="how-section" id="how">
+  <div class="container">
+    <div class="section-label fade-in">Workflow</div>
+    <h2 class="section-title fade-in">Three steps. That's it.</h2>
+    <p class="section-subtitle fade-in">
+      No accounts, no downloads, no sign-ups. Just paste, convert, and copy.
+    </p>
+
+    <div class="steps-grid fade-in" style="border: 1px solid var(--border); border-radius: 14px; overflow: hidden;">
+      <div class="step">
+        <div class="step-number">01 / Paste</div>
+        <h3>Input Your Key</h3>
+        <p>Paste your Solana private key in either JSON array format or Base58 string format. The tool auto-detects which one you've provided.</p>
+      </div>
+      <div class="step">
+        <div class="step-number">02 / Convert</div>
+        <h3>Instant Transformation</h3>
+        <p>Click convert and the tool immediately encodes or decodes your key using the Solana Base58 alphabet. Results appear in the output field.</p>
+      </div>
+      <div class="step">
+        <div class="step-number">03 / Copy</div>
+        <h3>Copy &amp; Use</h3>
+        <p>Copy the converted key to your clipboard and import it into Phantom, Solflare, Backpack, or any compatible Solana wallet.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Visual Section 2 -->
+<section class="visual-section">
+  <div class="visual-content">
+    <div class="section-label">Use Cases</div>
+    <h2>When do you need<br>key conversion?</h2>
+    <p>
+      Solana wallets use different formats internally. Here's when you'll need a converter:
+    </p>
+    <ul class="visual-list">
+      <li>
+        <svg class="check" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        <span><strong>Wallet migration</strong> — moving from Solflare (JSON) to Phantom (Base58)</span>
+      </li>
+      <li>
+        <svg class="check" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        <span><strong>Deprecated format errors</strong> — fixing "deprecated format" import errors</span>
+      </li>
+      <li>
+        <svg class="check" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        <span><strong>Development</strong> — converting CLI keypairs for dApp testing</span>
+      </li>
+      <li>
+        <svg class="check" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        <span><strong>Backup creation</strong> — maintaining keys in multiple formats for redundancy</span>
+      </li>
+    </ul>
+  </div>
+  <div class="visual-image">
+    <img src="https://mcp-tools-z-image-turbo.hf.space/--replicas/sjbqs/gradio_api/file=/tmp/gradio/4d80af4ff3b953a543fb55274ab1194397472928db5f0caea6df903ab4df71fb/image.webp" alt="Abstract key on dark surface">
+  </div>
+</section>
+
+<!-- FAQ -->
+<section id="faq">
+  <div class="container">
+    <div class="section-label fade-in">Questions</div>
+    <h2 class="section-title fade-in">Frequently asked</h2>
+    <p class="section-subtitle fade-in">
+      Everything you need to know about key conversion and security.
+    </p>
+
+    <div class="faq-list fade-in">
+      <div class="faq-item">
+        <div class="faq-question" onclick="toggleFaq(this)">
+          Is it safe to paste my private key here?
+          <span class="faq-toggle">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+          </span>
+        </div>
+        <div class="faq-answer">
+          Yes. All conversion happens entirely in your browser using client-side JavaScript. Your private key is never transmitted to any server, stored in any database, or logged anywhere. There is no backend — the tool is a static web page. For maximum security, you can even disconnect from the internet after the page loads.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question" onclick="toggleFaq(this)">
+          What's the difference between JSON and Base58 formats?
+          <span class="faq-toggle">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+          </span>
+        </div>
+        <div class="faq-answer">
+          JSON format represents your 64-byte keypair as a numeric array like <code style="font-family:var(--mono);color:var(--accent2)">[174, 47, 154, ...]</code>. It's used by the Solana CLI and older wallet versions. Base58 is a compact string encoding using the Solana Base58 alphabet, preferred by modern wallets like Phantom. Both represent the same underlying key data.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question" onclick="toggleFaq(this)">
+          Can I use the converted key in Phantom wallet?
+          <span class="faq-toggle">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+          </span>
+        </div>
+        <div class="faq-answer">
+          Yes. Phantom prefers Base58 format for private key imports. If you have a JSON array key, convert it to Base58 using this tool, then paste it into Phantom's "Import Private Key" field. If you see a "deprecated format" error in Phantom, it means you're trying to import JSON — convert to Base58 first.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question" onclick="toggleFaq(this)">
+          How does the Solscan button work?
+          <span class="faq-toggle">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+          </span>
+        </div>
+        <div class="faq-answer">
+          When you convert a 64-byte Solana keypair, the tool extracts the public key (the last 32 bytes) and Base58-encodes it to derive your wallet address. The "View on Solscan" button opens <code style="font-family:var(--mono);color:var(--accent2)">solscan.io/account/&lt;address&gt;</code> in a new tab so you can inspect the wallet's transaction history, token holdings, and on-chain activity. This derivation happens entirely client-side — no server call is made.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question" onclick="toggleFaq(this)">
+          What happens to my data after conversion?
+          <span class="faq-toggle">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+          </span>
+        </div>
+        <div class="faq-answer">
+          Nothing is stored. The input and output exist only in your browser's memory while the page is open. When you close the tab or navigate away, everything is gone. We don't use cookies, localStorage, or sessionStorage. Refresh the page and it's a clean slate.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question" onclick="toggleFaq(this)">
+          Can I verify the conversion is correct?
+          <span class="faq-toggle">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+          </span>
+        </div>
+        <div class="faq-answer">
+          Absolutely. Convert your key to Base58, then convert it back to JSON — the result will match your original input byte-for-byte. The conversion is a lossless bidirectional transformation. You can also verify the derived public key matches across formats, or check the wallet on Solscan to confirm the address is correct.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question" onclick="toggleFaq(this)">
+          Does this work offline?
+          <span class="faq-toggle">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+          </span>
+        </div>
+        <div class="faq-answer">
+          Yes. Once the page is loaded, all conversion and address derivation works without any internet connection. The only feature that requires internet is the Solscan link itself, since it opens an external website. For the highest security, load the page, disconnect from the internet, then paste and convert your keys.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <div class="footer-content">
+    <div class="footer-brand">
+      <div class="nav-logo-mark" style="width:24px;height:24px;border-radius:5px;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="8" cy="15" r="4"/><path d="M10.85 12.15L19 4"/><path d="M18 5l2 2"/><path d="M15 8l2 2"/>
+        </svg>
+      </div>
+      KeyConvert — Solana Private Key Converter
+    </div>
+    <div class="footer-links">
+      <a href="#converter">Converter</a>
+      <a href="#features">Features</a>
+      <a href="#how">How It Works</a>
+      <a href="#faq">FAQ</a>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>© 2026 KeyConvert. No data collected. No servers. No tracking.</span>
+    <span>Powered by 100% client-side JavaScript</span>
+  </div>
+</footer>
+
+<script>
+// ==========================================
+// Base58 Encode/Decode (Solana alphabet)
+// ==========================================
+const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+
+function base58Encode(bytes) {
+  let zeros = 0;
+  while (zeros < bytes.length && bytes[zeros] === 0) zeros++;
+
+  const input = new Uint8Array(bytes);
+  const encoded = [];
+  let startAt = zeros;
+
+  for (let i = startAt; i < input.length; i++) {
+    let carry = input[i];
+    let j = 0;
+    for (let k = encoded.length - 1; k >= 0 || carry !== 0; k--) {
+      if (k < 0) {
+        encoded.unshift(0);
+        k = 0;
+      }
+      carry += encoded[k] * 256;
+      encoded[k] = carry % 58;
+      carry = Math.floor(carry / 58);
+    }
+  }
+
+  const result = [];
+  for (let i = 0; i < zeros; i++) result.push(BASE58_ALPHABET[0]);
+  for (let i = 0; i < encoded.length; i++) result.push(BASE58_ALPHABET[encoded[i]]);
+  return result.join('');
+}
+
+function base58Decode(str) {
+  if (!str || str.length === 0) return new Uint8Array(0);
+
+  let zeros = 0;
+  while (zeros < str.length && str[zeros] === BASE58_ALPHABET[0]) zeros++;
+
+  const bytes = [];
+  let startAt = zeros;
+
+  for (let i = startAt; i < str.length; i++) {
+    const char = str[i];
+    const value = BASE58_ALPHABET.indexOf(char);
+    if (value === -1) throw new Error(`Invalid Base58 character: "${char}"`);
+
+    let carry = value;
+    let j = 0;
+    for (let k = bytes.length - 1; k >= 0 || carry !== 0; k--) {
+      if (k < 0) {
+        bytes.unshift(0);
+        k = 0;
+      }
+      carry += bytes[k] * 58;
+      bytes[k] = carry & 0xff;
+      carry >>= 8;
+    }
+  }
+
+  while (zeros > 0) {
+    bytes.unshift(0);
+    zeros--;
+  }
+
+  return new Uint8Array(bytes);
+}
+
+// ==========================================
+// Conversion Logic
+// ==========================================
+function detectFormat(input) {
+  const trimmed = input.trim();
+  if (trimmed.startsWith('[') && trimmed.endsWith(']')) return 'json';
+  const isBase58 = trimmed.split('').every(c => BASE58_ALPHABET.includes(c));
+  if (isBase58 && trimmed.length > 0) return 'base58';
+  return 'unknown';
+}
+
+function parseJsonArray(str) {
+  try {
+    const arr = JSON.parse(str.trim());
+    if (!Array.isArray(arr)) throw new Error('Not an array');
+    if (arr.length !== 64) throw new Error(`Expected 64 bytes, got ${arr.length}`);
+    const bytes = new Uint8Array(64);
+    for (let i = 0; i < 64; i++) {
+      if (typeof arr[i] !== 'number' || arr[i] < 0 || arr[i] > 255 || !Number.isInteger(arr[i])) {
+        throw new Error(`Invalid byte at index ${i}: ${arr[i]}`);
+      }
+      bytes[i] = arr[i];
+    }
+    return bytes;
+  } catch (e) {
+    throw new Error('Invalid JSON key: ' + e.message);
+  }
+}
+
+function bytesToJsonArray(bytes) {
+  const arr = Array.from(bytes);
+  return '[' + arr.join(', ') + ']';
+}
+
+function getBytes(input, mode) {
+  const trimmed = input.trim();
+  let format = mode === 'auto' ? detectFormat(trimmed) : mode;
+  if (format === 'json' || (mode === 'auto' && trimmed.includes('['))) {
+    try { return parseJsonArray(trimmed); } catch(e) {}
+  }
+  return base58Decode(trimmed);
+}
+
+function convert(input, mode) {
+  const trimmed = input.trim();
+  if (!trimmed) throw new Error('Please paste a key to convert');
+
+  let format = mode;
+  if (mode === 'auto') {
+    format = detectFormat(trimmed);
+  }
+
+  if (format === 'json') {
+    const bytes = parseJsonArray(trimmed);
+    return base58Encode(bytes);
+  } else if (format === 'base58') {
+    const bytes = base58Decode(trimmed);
+    return bytesToJsonArray(bytes);
+  } else {
+    if (mode === 'auto') {
+      if (trimmed.includes('[')) {
+        try {
+          const bytes = parseJsonArray(trimmed);
+          return base58Encode(bytes);
+        } catch (e) {}
+      }
+      try {
+        const bytes = base58Decode(trimmed);
+        return bytesToJsonArray(bytes);
+      } catch (e) {
+        throw new Error('Could not detect key format. Please use JSON array [174, 47, ...] or Base58 string.');
+      }
+    }
+    throw new Error('Unknown key format');
+  }
+}
+
+// ==========================================
+// UI Logic
+// ==========================================
+const inputEl = document.getElementById('inputKey');
+const outputEl = document.getElementById('outputKey');
+const convertBtn = document.getElementById('convertBtn');
+const copyBtn = document.getElementById('copyBtn');
+const clearBtn = document.getElementById('clearBtn');
+const swapBtn = document.getElementById('swapBtn');
+const messageEl = document.getElementById('convertMessage');
+const inputCount = document.getElementById('inputCount');
+const outputCount = document.getElementById('outputCount');
+const tabs = document.querySelectorAll('.converter-tab');
+const walletInfo = document.getElementById('walletInfo');
+const walletAddress = document.getElementById('walletAddress');
+const solscanBtn = document.getElementById('solscanBtn');
+
+let currentMode = 'auto';
+
+// Tab switching
+tabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    tabs.forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    currentMode = tab.dataset.mode;
+    if (inputEl.value.trim()) doConvert();
+  });
+});
+
+function showMessage(msg, type) {
+  messageEl.textContent = msg;
+  messageEl.className = 'converter-message show ' + type;
+  if (type === 'success') {
+    setTimeout(() => { messageEl.className = 'converter-message'; }, 3000);
+  }
+}
+
+function doConvert() {
+  const input = inputEl.value;
+  if (!input.trim()) {
+    outputEl.value = '';
+    updateCounts();
+    messageEl.className = 'converter-message';
+    walletInfo.style.display = 'none';
+    return;
+  }
+
+  try {
+    const result = convert(input, currentMode);
+    outputEl.value = result;
+    updateCounts();
+
+    // Derive wallet address from 64-byte keypair (last 32 bytes = public key)
+    try {
+      const bytes = getBytes(input, currentMode);
+      if (bytes.length === 64) {
+        const publicKey = bytes.slice(32, 64);
+        const address = base58Encode(publicKey);
+        walletAddress.textContent = address;
+        solscanBtn.href = 'https://solscan.io/account/' + address;
+        walletInfo.style.display = 'flex';
+      } else {
+        walletInfo.style.display = 'none';
+      }
+    } catch(e) {
+      walletInfo.style.display = 'none';
+    }
+
+    const detectedFormat = detectFormat(input);
+    const targetFormat = (currentMode === 'auto' ? detectedFormat : currentMode);
+    const targetName = targetFormat === 'json' ? 'Base58' : 'JSON array';
+    showMessage(`✓ Converted from ${detectedFormat.toUpperCase()} to ${targetName} (${result.length} chars)`, 'success');
+  } catch (e) {
+    outputEl.value = '';
+    updateCounts();
+    walletInfo.style.display = 'none';
+    showMessage('✕ ' + e.message, 'error');
+  }
+}
+
+function updateCounts() {
+  inputCount.textContent = inputEl.value.length + ' chars';
+  outputCount.textContent = outputEl.value.length + ' chars';
+}
+
+convertBtn.addEventListener('click', doConvert);
+
+inputEl.addEventListener('input', () => {
+  updateCounts();
+  if (currentMode === 'auto' && inputEl.value.trim().length > 10) {
+    clearTimeout(window._convertTimer);
+    window._convertTimer = setTimeout(doConvert, 300);
+  }
+});
+
+copyBtn.addEventListener('click', () => {
+  if (!outputEl.value) {
+    showMessage('Nothing to copy yet', 'error');
+    return;
+  }
+  navigator.clipboard.writeText(outputEl.value).then(() => {
+    showMessage('✓ Copied to clipboard', 'success');
+  }).catch(() => {
+    outputEl.select();
+    document.execCommand('copy');
+    showMessage('✓ Copied to clipboard', 'success');
+  });
+});
+
+clearBtn.addEventListener('click', () => {
+  inputEl.value = '';
+  outputEl.value = '';
+  updateCounts();
+  messageEl.className = 'converter-message';
+  walletInfo.style.display = 'none';
+  inputEl.focus();
+});
+
+swapBtn.addEventListener('click', () => {
+  if (!outputEl.value) {
+    showMessage('Convert a key first, then swap', 'error');
+    return;
+  }
+  inputEl.value = outputEl.value;
+  outputEl.value = '';
+  updateCounts();
+  const activeTab = document.querySelector('.converter-tab.active');
+  if (activeTab) {
+    if (activeTab.dataset.mode === 'json') {
+      document.querySelector('[data-mode="base58"]').click();
+    } else if (activeTab.dataset.mode === 'base58') {
+      document.querySelector('[data-mode="json"]').click();
+    }
+  }
+  doConvert();
+});
+
+// ==========================================
+// FAQ Toggle
+// ==========================================
+function toggleFaq(el) {
+  const item = el.parentElement;
+  const wasOpen = item.classList.contains('open');
+  document.querySelectorAll('.faq-item').forEach(f => f.classList.remove('open'));
+  if (!wasOpen) item.classList.add('open');
+}
+
+// ==========================================
+// Nav scroll effect
+// ==========================================
+window.addEventListener('scroll', () => {
+  const nav = document.getElementById('nav');
+  if (window.scrollY > 50) nav.classList.add('scrolled');
+  else nav.classList.remove('scrolled');
+});
+
+// ==========================================
+// Fade-in on scroll (Intersection Observer)
+// ==========================================
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+      observer.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+
+document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+// ==========================================
+// Initial char count
+// ==========================================
+updateCounts();
+</script>
+</body>
+</html>
